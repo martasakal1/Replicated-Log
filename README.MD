@@ -1,7 +1,7 @@
 ## Replicated Log
 Client-Server application that includes Master and two secondaries 
 
-###Instruction 
+### Instruction 
 To run application use the following commands:
 
     docker-compose build
