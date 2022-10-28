@@ -1,0 +1,43 @@
+version: '3'
+services:
+  master:
+      build: ./backend/master
+      container_name: master
+      command: ["sh", "-c", "python3 main.py"]
+      environment:
+        - ROLE=master
+        - LOG_LEVEL=INFO
+      volumes:
+        - ./backend:/backend/master
+      ports:
+        - 8080:8080
+
+  secondary1:
+      build: ./backend/secondary
+      container_name: secondary1
+      command: ["sh", "-c", "python3 main.py"]
+      environment:
+        - ROLE=secondary
+        - MASTER_HOST=http://master:8080
+        - LOG_LEVEL=INFO
+      volumes:
+        - ./backend:/backend/secondary
+      depends_on:
+        - master
+      ports:
+        - 8001:8000
+
+  secondary2:
+      build:  ./backend/secondary
+      container_name: secondary2
+      command: ["sh", "-c", "python3 main.py"]
+      environment:
+        - ROLE=secondary
+        - MASTER_HOST=http://master:8080
+        - LOG_LEVEL=INFO
+      volumes:
+        - ./backend:/backend/secondary
+      depends_on:
+        - master
+      ports:
+        - 8002:8000
