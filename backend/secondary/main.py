@@ -1,5 +1,6 @@
 from flask import Flask
 from flask import request
+import time 
 
 app = Flask(__name__)
 
@@ -15,6 +16,7 @@ def return_message():
 	if request.method == 'POST':
 
 		message = request.get_json()
+		time.sleep(int(10))
 		messages.append(message)
 
 		return 'Message has been added', 200
