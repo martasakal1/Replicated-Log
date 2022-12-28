@@ -2,6 +2,8 @@ import requests
 import asyncio
 import os 
 import aiohttp
+import time 
+
 from flask import Flask
 from flask import request
 
@@ -26,6 +28,8 @@ async def add_message():
 	messages.append(message)
 
 	w_k -= 1
+
+	app.logger.info(f'Logssss')
 
 
 	tasks = [asyncio.create_task(copy_message(secondary, message)) for secondary in secondaries ]
@@ -53,8 +57,14 @@ async def add_message():
 
 
 async def copy_message(secondary, message):
+	while True:
+		try:
+			return await asyncio.wait_for(post_secondary(secondary, message), timeout=5)
 
-	await post_secondary(secondary, message)
+		except asyncio.TimeoutError:
+			time.sleep(1)		
+			app.logger.info(f'Retry 1')
+
 
 	return True
 
@@ -62,14 +72,13 @@ async def post_secondary(secondary, message):
 
 	session = aiohttp.ClientSession()
 
-	while not await session.post(url=secondary + '/messages', json=message):
-		app.logger.error(f'Host is unreachable: {secondary}; Waiting for {timeout} seconds')
-		time.sleep(1)
-		timeout -= 1
+	try:
+		return await session.post(url=secondary + '/messages', json=message)
+		app.logger.info(f'Finished post')
 
-	await session.close()
+	finally:
+		await session.close()
 
-	return True
 
 if __name__ == '__main__':
 	app.run(host='0.0.0.0', port = 8080)
