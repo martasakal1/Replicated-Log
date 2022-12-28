@@ -15,8 +15,10 @@ def return_message():
 
 	if request.method == 'POST':
 
+
+		time.sleep(10)
+
 		message = request.get_json()
-		time.sleep(int(10))
 		messages.append(message)
 
 		return 'Message has been added', 200
