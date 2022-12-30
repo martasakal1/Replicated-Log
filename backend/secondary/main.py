@@ -15,11 +15,6 @@ def return_message():
 
 	if request.method == 'POST':
 
-		app.logger.info(f'Start sleep')
-
-		time.sleep(10)
-		app.logger.info(f'End Sleep')
-
 		message = request.get_json()
 		messages.append(message)
 

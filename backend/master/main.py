@@ -3,6 +3,8 @@ import asyncio
 import os 
 import aiohttp
 import time 
+import random
+import backoff
 
 from flask import Flask
 from flask import request
@@ -40,44 +42,41 @@ async def add_message():
 
 		return 'Message was successfully saved', 200
 
+	app.logger.info(f'Future {tasks}')
+
 	for future in asyncio.as_completed(tasks):
 		
 		response =  await future
-		
-		if response == True: 
+
+		if response.status == 200: 
 
 			w_k -= 1
 
-	if  w_k <= 0:
+		app.logger.info(f'Future {w_k <= 0}')
 
-		return 'Message was successfully saved', 200
+		if  w_k <= 0:
+
+			return 'Message was successfully saved', 200
 
 	return 'Replication error', 400
 
+def backoff_hdlr(details):
+    app.logger.info(f'Retry')
 
+@backoff.on_exception(backoff.expo,
+					Exception,
+					max_tries=3,
+					on_backoff=backoff_hdlr)
 
 async def copy_message(secondary, message):
-	while True:
-		try:
-			return await asyncio.wait_for(post_secondary(secondary, message), timeout=5)
 
-		except asyncio.TimeoutError:
-			time.sleep(1)		
-			app.logger.info(f'Retry 1')
+	async with aiohttp.ClientSession() as session:
+			async with session.post(url=secondary + '/messages', json=message, timeout=10) as response:
+					return response
 
 
-	return True
 
-async def post_secondary(secondary, message):
 
-	session = aiohttp.ClientSession()
-
-	try:
-		return await session.post(url=secondary + '/messages', json=message)
-		app.logger.info(f'Finished post')
-
-	finally:
-		await session.close()
 
 
 if __name__ == '__main__':
