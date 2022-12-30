@@ -1,7 +1,8 @@
-import requests
 import asyncio
 import os 
 import aiohttp
+from Replicator import Replicator
+from MessageStorage import MessageStorage
 import time 
 import random
 import backoff
@@ -10,72 +11,47 @@ from flask import Flask
 from flask import request
 
 app = Flask(__name__)
+msg_storage = MessageStorage()
+replicator = Replicator(app.logger)
 
-messages = []
 secondaries = [ 'http://secondary1:8000', 'http://secondary2:8000' ]	
 
-timeout = 20
+gid = 0
+
+def get_gid():
+	global gid
+	gid = gid + 1
+	return gid
+
 
 @app.route('/get_message')
 def get_message():
-	return ''.join(str(messages)), 200
+	return msg_storage.get_all(), 200
 
 @app.post('/messages/new')
-async def add_message():
+async def save_message():
 
-	message = request.get_json()['message']
+	try:
+		message = request.get_json()['message']
+	except:
+		app.logger.error(f'Message fiels was not found in reuqest data')
+		return 'The field "message" was not found in JSON', 400
 
-	w_k = request.get_json()['w_k']
+	msg_id = get_gid() 
 
-	messages.append(message)
+	try:
+		w_c = request.get_json()['w_c']
+	except:
+		app.logger.error(f'Write concern field was not found in reuqest data')
 
-	w_k -= 1
+	msg_storage.append(msg_id, message)
 
-	app.logger.info(f'Logssss')
+	w_c -= 1
 
+	if await replicator.add_message(msg_id, message, w_c):
+			return 'Message was successsfuly saved', 200
 
-	tasks = [asyncio.create_task(copy_message(secondary, message)) for secondary in secondaries ]
-
-	if w_k == 0:
-
-		await asyncio.gather(*tasks)
-
-		return 'Message was successfully saved', 200
-
-	app.logger.info(f'Future {tasks}')
-
-	for future in asyncio.as_completed(tasks):
-		
-		response =  await future
-
-		if response.status == 200: 
-
-			w_k -= 1
-
-		app.logger.info(f'Future {w_k <= 0}')
-
-		if  w_k <= 0:
-
-			return 'Message was successfully saved', 200
-
-	return 'Replication error', 400
-
-def backoff_hdlr(details):
-    app.logger.info(f'Retry')
-
-@backoff.on_exception(backoff.expo,
-					Exception,
-					max_tries=3,
-					on_backoff=backoff_hdlr)
-
-async def copy_message(secondary, message):
-
-	async with aiohttp.ClientSession() as session:
-			async with session.post(url=secondary + '/messages', json=message, timeout=10) as response:
-					return response
-
-
-
+	return 'Replication Error', 400
 
 
 
