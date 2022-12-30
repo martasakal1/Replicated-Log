@@ -1,27 +1,26 @@
 import asyncio
-import os 
+import os
 import aiohttp
-from Replicator import Replicator
-from MessageStorage import MessageStorage
-import time 
-import random
 import backoff
 
 from flask import Flask
 from flask import request
 
+from Replicator import Replicator
+from MessageStorage import MessageStorage
+
+
 app = Flask(__name__)
 msg_storage = MessageStorage()
 replicator = Replicator(app.logger)
 
-secondaries = [ 'http://secondary1:8000', 'http://secondary2:8000' ]	
-
-gid = 0
+secondaries = [ 'http://secondary1:8000', 'http://secondary2:8000' ]
+GID = 0
 
 def get_gid():
-	global gid
-	gid = gid + 1
-	return gid
+	global GID
+	GID = GID + 1
+	return GID
 
 
 @app.route('/get_message')
@@ -37,7 +36,7 @@ async def save_message():
 		app.logger.error(f'Message fiels was not found in reuqest data')
 		return 'The field "message" was not found in JSON', 400
 
-	msg_id = get_gid() 
+	msg_id = get_gid()
 
 	try:
 		w_c = request.get_json()['w_c']
