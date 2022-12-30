@@ -3,20 +3,22 @@ from flask import request
 import time 
 
 app = Flask(__name__)
+from MessageStorage import MessageStorage
 
-messages = []
+msg_storage = MessageStorage()
 
 @app.route('/messages', methods = ['GET', 'POST'])
 def return_message():
     
 	if request.method == 'GET':
 
-		return ''.join(str(messages)), 200
+		return msg_storage.get_all(), 200
 
 	if request.method == 'POST':
 
-		message = request.get_json()
-		messages.append(message)
+		data = request.get_json()
+		msg_id, message = data.popitem()
+		msg_storage.append(msg_id, message)
 
 		return 'Message has been added', 200
 
